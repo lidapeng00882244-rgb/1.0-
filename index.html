@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>留学生求职案例生成器</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue.js CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app">
+        <!-- 顶部标题栏 -->
+        <header class="gradient-bg text-white py-6 shadow-lg">
+            <div class="container mx-auto px-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-light tracking-wide">留学生求职案例生成器</h1>
+                        <p class="text-gray-200 mt-2 text-sm">为每位学员定制专属求职案例报告</p>
+                    </div>
+                    <button @click="toggleHistory" class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition text-sm font-medium">
+                        {{ showHistory ? '返回生成' : '历史记录' }}
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 错误提示 -->
+        <div v-if="errorMessage" class="fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="font-semibold mb-1">错误</p>
+                    <p class="text-sm">{{ errorMessage }}</p>
+                </div>
+                <button @click="errorMessage = ''" class="ml-4 text-white hover:text-gray-200">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 成功提示 -->
+        <div v-if="successMessage" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="font-semibold mb-1">成功</p>
+                    <p class="text-sm">{{ successMessage }}</p>
+                </div>
+                <button @click="successMessage = ''" class="ml-4 text-white hover:text-gray-200">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="container mx-auto px-6 py-8">
+            <!-- 历史记录视图 -->
+            <div v-if="showHistory" class="max-w-6xl mx-auto">
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">案例历史记录</h2>
+                        <button @click="loadHistory" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm">
+                            刷新
+                        </button>
+                    </div>
+                    
+                    <div v-if="loadingHistory" class="text-center py-12">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mb-4"></div>
+                        <p class="text-gray-500">加载中...</p>
+                    </div>
+                    
+                    <div v-else-if="historyCases.length === 0" class="text-center py-12 text-gray-400">
+                        <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p>暂无历史记录</p>
+                    </div>
+                    
+                    <div v-else class="space-y-4">
+                        <div v-for="caseItem in historyCases" :key="caseItem.id" 
+                             class="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition cursor-pointer"
+                             @click="viewCaseDetail(caseItem.id)">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h3 class="font-semibold text-gray-800">{{ caseItem.teacher }}</h3>
+                                        <span v-if="caseItem.direction" class="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">{{ caseItem.direction }}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 mb-2">{{ caseItem.preview }}</p>
+                                    <p class="text-xs text-gray-400">{{ formatDate(caseItem.timestamp) }}</p>
+                                </div>
+                                <div class="flex gap-2 ml-4">
+                                    <button @click.stop="viewCaseDetail(caseItem.id)" class="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200 transition">
+                                        查看
+                                    </button>
+                                    <button @click.stop="deleteCase(caseItem.id)" class="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition">
+                                        删除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 案例生成视图 -->
+            <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- 左侧：输入区域 -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-6">客户信息</h2>
+                        
+                        <!-- 求职方向 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">求职方向</label>
+                            <select v-model="form.direction" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
+                                <option value="">请选择求职方向</option>
+                                <option v-for="dir in directions" :key="dir" :value="dir">{{ dir }}</option>
+                            </select>
+                        </div>
+
+                        <!-- 客户求职岗位 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">客户求职岗位</label>
+                            <input v-model="form.position" type="text" placeholder="例如：前端开发工程师、产品经理、数据分析师" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
+                        </div>
+
+                        <!-- 案例解决的客户问题 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">案例解决的客户问题</label>
+                            <div class="space-y-2">
+                                <label v-for="problem in customerProblems" :key="problem.value" class="flex items-center p-3 border-2 rounded-lg cursor-pointer transition" :class="form.customerProblems.includes(problem.value) ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'">
+                                    <input type="checkbox" :value="problem.value" v-model="form.customerProblems" class="mr-2">
+                                    <span class="text-sm font-medium">{{ problem.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 其他需要突出的内容 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">其他需要突出的内容</label>
+                            <input v-model="form.highlights" type="text" placeholder="例如：逆袭、名企背景、导师资源、快速提升" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
+                        </div>
+
+                        <!-- 匹配按钮 -->
+                        <button @click="matchMentors" :disabled="!form.direction" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md">
+                            匹配导师
+                        </button>
+                        <p v-if="!form.direction" class="mt-2 text-xs text-gray-500 text-center">请先选择求职方向</p>
+                    </div>
+                </div>
+
+                <!-- 中间：导师选择区域 -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-6">匹配导师</h2>
+                        
+                        <div v-if="matchedMentors.length === 0" class="text-center py-12 text-gray-400">
+                            <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                            <p>请先选择求职方向并点击"匹配导师"</p>
+                        </div>
+
+                        <div v-if="loading" class="text-center py-12">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mb-4"></div>
+                            <p class="text-gray-500">正在匹配导师...</p>
+                        </div>
+
+                        <div v-else-if="matchedMentors.length > 0" class="space-y-4">
+                            <div v-for="(mentor, index) in matchedMentors" :key="index" 
+                                 @click="selectMentor(mentor)"
+                                 class="card-hover p-4 border-2 rounded-lg cursor-pointer fade-in"
+                                 :class="selectedMentor && selectedMentor.name === mentor.name ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <h3 class="font-semibold text-gray-800">{{ mentor.name }}</h3>
+                                            <span v-if="mentor.match_score" class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                                匹配度 {{ mentor.match_score }}%
+                                            </span>
+                                        </div>
+                                        <div class="space-y-1.5 text-sm text-gray-600 mb-3">
+                                            <p v-if="mentor.english_name" class="flex items-center">
+                                                <span class="font-medium text-gray-700 w-20">英文名：</span>
+                                                <span>{{ mentor.english_name }}</span>
+                                            </p>
+                                            <p v-if="mentor.company" class="flex items-center">
+                                                <span class="font-medium text-gray-700 w-20">在职企业：</span>
+                                                <span>{{ mentor.company }}</span>
+                                            </p>
+                                            <p v-if="mentor.position" class="flex items-center">
+                                                <span class="font-medium text-gray-700 w-20">岗位：</span>
+                                                <span>{{ mentor.position }}</span>
+                                            </p>
+                                        </div>
+                                        <div v-if="mentor.direction" class="flex flex-wrap gap-2 mb-2">
+                                            <span class="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">{{ mentor.direction }}</span>
+                                        </div>
+                                        <p v-if="mentor.match_reason" class="text-xs text-gray-500 italic mt-2 bg-gray-50 p-2 rounded">
+                                            {{ mentor.match_reason }}
+                                        </p>
+                                    </div>
+                                    <div v-if="selectedMentor && selectedMentor.name === mentor.name" class="ml-3">
+                                        <svg class="w-6 h-6 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：案例生成区域 -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-6">案例报告</h2>
+                        
+                        <div v-if="!selectedMentor" class="text-center py-12 text-gray-400">
+                            <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p>请先选择一位导师</p>
+                        </div>
+
+                        <div v-else class="fade-in">
+                            <div class="mb-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                <p class="text-sm font-medium text-gray-800 mb-2">已选择导师：{{ selectedMentor.name }}</p>
+                                <div class="text-xs text-gray-600 space-y-1">
+                                    <p v-if="selectedMentor.english_name">英文名：{{ selectedMentor.english_name }}</p>
+                                    <p v-if="selectedMentor.company">在职企业：{{ selectedMentor.company }}</p>
+                                    <p v-if="selectedMentor.position">岗位：{{ selectedMentor.position }}</p>
+                                </div>
+                            </div>
+                            
+                            <button @click="generateCase" :disabled="generating" class="w-full mb-4 px-4 py-2.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium">
+                                <span v-if="generating">正在生成案例...</span>
+                                <span v-else>生成案例</span>
+                            </button>
+                            
+                            <div v-if="generating" class="text-center py-8">
+                                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mb-4"></div>
+                                <p class="text-gray-500 text-sm">AI正在生成案例，请稍候...</p>
+                            </div>
+                            
+                            <div v-else-if="generatedCase" class="prose max-w-none">
+                                <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                                    <div class="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{{ generatedCase }}</div>
+                                </div>
+                                <div class="mt-4 grid grid-cols-2 gap-3">
+                                    <button @click="copyCase" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition font-medium">
+                                        复制案例
+                                    </button>
+                                    <button @click="saveCase" class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition font-medium">
+                                        保存案例
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="text-center py-8 text-gray-400 text-sm">
+                                点击"生成案例"按钮开始生成
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    form: {
+                        direction: '',
+                        position: '',
+                        customerProblems: [],
+                        highlights: ''
+                    },
+                    customerProblems: [
+                        { value: 'interview', label: '面试碰壁' },
+                        { value: 'exam', label: '笔试碰壁' },
+                        { value: 'resume', label: '简历投递无反馈' },
+                        { value: 'career', label: '职业规划不明确' }
+                    ],
+                    directions: ['外企', '央国企', '快消', '互联网', '金融', '银行', '生物医药', '建筑', '制造业', '通信', '传媒', '娱乐'],
+                    matchedMentors: [],
+                    selectedMentor: null,
+                    generatedCase: '',
+                    currentCaseId: null,
+                    loading: false,
+                    generating: false,
+                    showHistory: false,
+                    historyCases: [],
+                    loadingHistory: false,
+                    errorMessage: '',
+                    successMessage: '',
+                    apiBaseUrl: '' // 部署时由同域后端提供，因此前端不写死端口
+                };
+            },
+            mounted() {
+                // 自动根据当前域名拼接 API 地址，例如在 Zeabur 上为 https://your-domain/api
+                this.apiBaseUrl = `${window.location.origin}`;
+                // 检查后端服务是否可用
+                this.checkServerHealth();
+            },
+            methods: {
+                showError(message) {
+                    this.errorMessage = message;
+                    setTimeout(() => {
+                        this.errorMessage = '';
+                    }, 5000);
+                },
+                showSuccess(message) {
+                    this.successMessage = message;
+                    setTimeout(() => {
+                        this.successMessage = '';
+                    }, 3000);
+                },
+                toggleHistory() {
+                    this.showHistory = !this.showHistory;
+                    if (this.showHistory) {
+                        this.loadHistory();
+                    }
+                },
+                async checkServerHealth() {
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/health`);
+                        const data = await response.json();
+                        if (!data.success) {
+                            this.showError('后端服务异常，请检查服务器状态');
+                        }
+                    } catch (error) {
+                        this.showError('无法连接到后端服务，请确保服务器已启动');
+                    }
+                },
+                async matchMentors() {
+                    if (!this.form.direction) {
+                        this.showError('请先选择求职方向');
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    this.matchedMentors = [];
+                    this.selectedMentor = null;
+                    this.generatedCase = '';
+                    this.currentCaseId = null;
+                    
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/api/match-teachers`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                direction: this.form.direction,
+                                position: this.form.position || ''
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP错误: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.matchedMentors = data.teachers || [];
+                            if (this.matchedMentors.length === 0) {
+                                this.showError('未找到匹配的导师，请尝试其他求职方向');
+                            }
+                        } else {
+                            this.showError('匹配导师失败：' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('匹配导师错误:', error);
+                        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                            this.showError('无法连接到后端服务，请检查服务器是否运行在 ' + this.apiBaseUrl);
+                        } else {
+                            this.showError('匹配导师失败：' + error.message);
+                        }
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                selectMentor(mentor) {
+                    this.selectedMentor = mentor;
+                    this.generatedCase = '';
+                    this.currentCaseId = null;
+                },
+                async generateCase() {
+                    if (!this.selectedMentor) {
+                        this.showError('请先选择一位导师');
+                        return;
+                    }
+                    
+                    this.generating = true;
+                    this.generatedCase = '';
+                    this.currentCaseId = null;
+                    
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/api/generate-case`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                teacher: this.selectedMentor,
+                                direction: this.form.direction,
+                                position: this.form.position,
+                                customer_problems: this.form.customerProblems,
+                                highlights: this.form.highlights
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP错误: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.generatedCase = data.case || '';
+                            this.currentCaseId = data.caseId || null;
+                            this.showSuccess('案例生成成功！');
+                        } else {
+                            this.showError('生成案例失败：' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('生成案例错误:', error);
+                        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                            this.showError('无法连接到后端服务，请检查服务器是否运行');
+                        } else {
+                            this.showError('生成案例失败：' + error.message);
+                        }
+                    } finally {
+                        this.generating = false;
+                    }
+                },
+                async saveCase() {
+                    if (!this.generatedCase) {
+                        this.showError('没有可保存的案例');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/api/save-case`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                caseId: this.currentCaseId,
+                                case: this.generatedCase,
+                                teacher: this.selectedMentor,
+                                direction: this.form.direction,
+                                position: this.form.position,
+                                customer_problems: this.form.customerProblems,
+                                highlights: this.form.highlights
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP错误: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.currentCaseId = data.caseId;
+                            this.showSuccess('案例保存成功！');
+                        } else {
+                            this.showError('保存案例失败：' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('保存案例错误:', error);
+                        this.showError('保存案例失败：' + error.message);
+                    }
+                },
+                async loadHistory() {
+                    this.loadingHistory = true;
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/api/cases`);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP错误: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.historyCases = data.cases || [];
+                        } else {
+                            this.showError('加载历史记录失败：' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('加载历史记录错误:', error);
+                        this.showError('加载历史记录失败：' + error.message);
+                    } finally {
+                        this.loadingHistory = false;
+                    }
+                },
+                async viewCaseDetail(caseId) {
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/api/cases/${caseId}`);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP错误: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success && data.case) {
+                            const caseData = data.case;
+                            this.generatedCase = caseData.case || '';
+                            this.currentCaseId = caseData.id;
+                            this.selectedMentor = caseData.teacher || null;
+                            this.form.direction = caseData.direction || '';
+                            this.form.position = caseData.position || '';
+                            this.form.customerProblems = caseData.customer_problems || [];
+                            this.form.highlights = caseData.highlights || '';
+                            this.showHistory = false;
+                            this.showSuccess('已加载案例详情');
+                        } else {
+                            this.showError('获取案例详情失败：' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('查看案例详情错误:', error);
+                        this.showError('查看案例详情失败：' + error.message);
+                    }
+                },
+                async deleteCase(caseId) {
+                    if (!confirm('确定要删除这个案例吗？')) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`${this.apiBaseUrl}/api/cases/${caseId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP错误: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            this.showSuccess('案例删除成功');
+                            this.loadHistory();
+                        } else {
+                            this.showError('删除案例失败：' + (data.error || '未知错误'));
+                        }
+                    } catch (error) {
+                        console.error('删除案例错误:', error);
+                        this.showError('删除案例失败：' + error.message);
+                    }
+                },
+                formatDate(timestamp) {
+                    if (!timestamp) return '';
+                    const date = new Date(timestamp);
+                    return date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                },
+                async copyCase() {
+                    if (!this.generatedCase) {
+                        this.showError('没有可复制的内容');
+                        return;
+                    }
+                    
+                    try {
+                        await navigator.clipboard.writeText(this.generatedCase);
+                        this.showSuccess('案例已复制到剪贴板');
+                    } catch (error) {
+                        // 降级方案
+                        const textArea = document.createElement('textarea');
+                        textArea.value = this.generatedCase;
+                        textArea.style.position = 'fixed';
+                        textArea.style.opacity = '0';
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        try {
+                            document.execCommand('copy');
+                            this.showSuccess('案例已复制到剪贴板');
+                        } catch (err) {
+                            this.showError('复制失败，请手动复制');
+                        }
+                        document.body.removeChild(textArea);
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
+

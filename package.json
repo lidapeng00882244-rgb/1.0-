@@ -1,0 +1,21 @@
+{
+  "name": "case-generator-1.0",
+  "version": "1.0.0",
+  "description": "留学生求职案例生成器（部署用精简版本）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "case-generator",
+    "backend"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}
+

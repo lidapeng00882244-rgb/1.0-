@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log*
+*.log
+
+# 运行时生成的案例文件
+cases/
+
+# 本地敏感配置（包含 API Key）
+config.json
+
+# 操作系统和编辑器杂项
+.DS_Store
+Thumbs.db
+.vscode
+
